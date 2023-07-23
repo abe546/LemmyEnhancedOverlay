@@ -2,6 +2,7 @@
 const POST = "post";
 const EXPANDO = "expando ";
 const IMAGE = "image";
+const RANK = "rank";
 
 const ESCAPE_KEY = 27;
 const S_KEY = 83;
@@ -11,6 +12,8 @@ const nextPageWarning = "https://i.imgur.com/rmF0e71.png";
 
 var index = 0;
 var lemmyPosts;
+var disableKeys = true;
+var currentRank;
 
 window.onload = (event) => {
     console.log("page is fully loaded");
@@ -46,7 +49,7 @@ async function GetNextPostWithImage(posts) {
 
     console.log("START : " + indexAtStart);
     console.log("POSTS LENGTH " + posts.length);
-
+    var imageSrc;
     for (let i = indexAtStart; i < posts.length; i++) {
         for (let j = 0; j < posts[i].childNodes.length; j++) {
             if (posts[i].childNodes[j] != undefined &&
@@ -57,11 +60,26 @@ async function GetNextPostWithImage(posts) {
                         posts[i].childNodes[j].childNodes[k].className == IMAGE &&
                         posts[i].childNodes[j].childNodes[k].childNodes[1] != undefined) {
                         var entry = posts[i].childNodes[j].childNodes[k].childNodes[1];
-                        index = i;  
-                        return entry.src;
+                        index = i;
+                        imageSrc = entry.src;
                     }
                 }
             }
+        }
+
+        if(imageSrc != undefined)
+        {
+          for(let j = 0; j < posts[i].childNodes.length; j++){
+            if(posts[i].childNodes[j].className == RANK)
+            {
+              var rank = posts[i].childNodes[j].innerText;
+              currentRank = rank;
+              return {
+                rank: rank,
+                imageSrc: imageSrc
+              };
+            }
+          }
         }
 
     }
@@ -86,7 +104,7 @@ async function GetPreviousPostWithImage(posts) {
 
     console.log("START : " + indexAtStart);
     console.log("POSTS LENGTH " + posts.length);
-
+    var imageSrc;
     for (let i = indexAtStart; i >= 0; i--) {
         for (let j = 0; j < posts[i].childNodes.length; j++) {
             if (posts[i].childNodes[j] != undefined &&
@@ -98,10 +116,25 @@ async function GetPreviousPostWithImage(posts) {
                         posts[i].childNodes[j].childNodes[k].childNodes[1] != undefined) {
                         var entry = posts[i].childNodes[j].childNodes[k].childNodes[1];
                         index = i;
-                        return entry.src;
+                        imageSrc = entry.src;
                     }
                 }
             }
+        }
+
+        if(imageSrc != undefined)
+        {
+          for(let j = 0; j < posts[i].childNodes.length; j++){
+            if(posts[i].childNodes[j].className == RANK)
+            {
+              var rank = posts[i].childNodes[j].innerText;
+              currentRank = rank;
+              return {
+                rank: rank,
+                imageSrc: imageSrc
+              };
+            }
+          }
         }
 
     }
@@ -116,7 +149,7 @@ async function GetPreviousPostWithImage(posts) {
 }
 
 function SetDisplay() {
-    var $input = $('<p><input type="button" value="Base" class="buttons" id="base" >');
+    var $input = $('<input type="button" value="Base" class="buttons" id="base" /input>');
     $input.prependTo($("body"));
 
     $("#base").after("<div id=\"imageView\" ></div>");
@@ -128,43 +161,106 @@ function SendImageToDisplay(imageSrc, rank) {
         return;
     }
 
+    if(rank == undefined)
+    {
+      rank = lemmyPosts.length-1;
+    }
+
+    console.log("IMAGE SRC : "+imageSrc);
+
     const post = `<img src=\"${imageSrc}\" class=\"imagePost\" id=\"imagePost${rank}\">"`;
     $("#imageView").after(post);
 }
 
-async function HideCurrentImage() {
-    $(".imagePost").hide();
+async function HideCurrentImage(rank) {
+
+    if(rank == undefined)
+    {
+      $(".imagePost").hide();
+      return;
+    }
+
+    $(`#imagePost${rank}`).hide();
+}
+
+async function ShowCurrentImage(rank)
+{
+  if(rank == undefined)
+  {
+    $(".imagePost").show();
+    return;
+  }
+
+    $(`#imagePost${rank}`).show();
+}
+
+async function FlipKeyReading()
+{
+  disableKeys = !disableKeys;
+
+  console.log("DISABLE KEY VALUE : " + disableKeys);
 }
 
 //Key down function listener :
 $(document).keydown(async function(keyPress) {
+
+  if(keyPress.keyCode == ESCAPE_KEY)
+  {
+    console.log("ESCAPE KEY PRESS");
+    if(disableKeys){
+      await ShowCurrentImage(currentRank);
+      await FlipKeyReading();
+      return;
+    }
+
+    await HideCurrentImage();
+    await FlipKeyReading();
+    return;
+  }
+
+    if(disableKeys)
+    {
+      console.log("KEY READING DISABLED " + disableKeys);
+      //Key reading disabled
+      return;
+    }
+
     console.log("Key press" + keyPress.keyCode);
     var imageSrc;
+    var rank;
     if (keyPress.keyCode == W_KEY) {
 
         console.log("W Key press");
         console.log("LEMMY POSTS LENGTH : " + lemmyPosts.length);
-        await HideCurrentImage();
-        imageSrc = await GetNextPostWithImage(lemmyPosts);
+        await HideCurrentImage(currentRank);
+        result = await GetNextPostWithImage(lemmyPosts);
 
-        console.log("IMAGE SRC : " + imageSrc);
+        console.log("RESULT : " + result);
 
-        if (imageSrc == undefined) {
+
+        if (result == null) {
             imageSrc = nextPageWarning;
+        }else {
+          console.log("IMAGE SRC : " + result.imageSrc);
+          imageSrc = result.imageSrc;
+          rank = result.rank;
         }
 
-        SendImageToDisplay(imageSrc, 0);
+        SendImageToDisplay(imageSrc, rank);
 
         return;
     } else if (keyPress.keyCode == S_KEY) {
         console.log("S Key press");
         console.log("LEMMY POSTS LENGTH : " + lemmyPosts.length);
-        await HideCurrentImage();
-        imageSrc = await GetPreviousPostWithImage(lemmyPosts);
+        await HideCurrentImage(currentRank);
+        result = await GetPreviousPostWithImage(lemmyPosts);
+        if(result != null){
+          imageSrc = result.imageSrc;
+          rank = result.rank;
+          console.log("IMAGE SRC : " + result.imageSrc);
+        }
 
-        console.log("IMAGE SRC : " + imageSrc);
-
-        SendImageToDisplay(imageSrc, 0);
+        SendImageToDisplay(imageSrc, rank);
 
         return;
     }
