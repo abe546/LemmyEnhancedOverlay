@@ -1,0 +1,1 @@
+Lemmy Enhanced Overlay (LEO) is a UI overlay for making lemmy easier to browse. Opening images through arrow key or clicking the next or previous button, images showing over layed on the page automatically on traversal. 
