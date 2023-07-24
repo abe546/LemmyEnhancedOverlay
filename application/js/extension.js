@@ -6,11 +6,14 @@ const IMAGE = "image";
 const RANK = "rank";
 const NEXT = "next";
 const PREV = "prev";
+const PAGER = "pager";
 const PROCESSED_POST = "processedPost";
 
 const ESCAPE_KEY = 27;
 const S_KEY = 83;
 const W_KEY = 87;
+const SHIFT = 16;
+const SPACE_BAR = 32;
 
 const nextPageWarning = "https://i.imgur.com/rmF0e71.png";
 
@@ -22,7 +25,6 @@ var currentRank;
 window.addEventListener('load', async function () {
 
   console.log("page is fully loaded");
-
   await StartState();
   await SetDisplay();
 });
@@ -45,12 +47,7 @@ async function LoadPosts() {
 
 async function GetNextPostWithImage(posts) {
     console.log("GET NEXT POST, INDEX : " + index);
-
-    if (index != 0) {
-        index = index + 1; //Move forward, curr is already displayed
-    }
-
-    const indexAtStart = index;
+     const indexAtStart = index;
 
     console.log("START : " + indexAtStart);
     console.log("POSTS LENGTH " + posts.length);
@@ -105,10 +102,6 @@ async function GetNextPostWithImage(posts) {
 async function GetPreviousPostWithImage(posts) {
     console.log("GET PREVIOUS POST, INDEX : " + index);
 
-    if (index != 0) {
-        index = index - 1; //Move backward, curr is already displayed
-    }
-
     const indexAtStart = index;
 
     console.log("START : " + indexAtStart);
@@ -141,6 +134,7 @@ async function GetPreviousPostWithImage(posts) {
               if(document.getElementById(`imagePost${rank}`) == undefined){
               posts[i].childNodes[j].insertAdjacentHTML( 'beforeend', await GetUniquePostIdElement(rank));
             }
+
               return {
                 rank: rank,
                 imageSrc: imageSrc
@@ -194,6 +188,11 @@ async function GetPreviousPageUrl()
   return nextPageUrl;
 }
 
+function GoToPage(page)
+{
+  window.location.href = page;
+}
+
 async function FlipKeyReading()
 {
   disableKeys = !disableKeys;
@@ -235,14 +234,13 @@ $(document).keydown(async function(keyPress) {
         console.log("W Key press");
         console.log("LEMMY POSTS LENGTH : " + lemmyPosts.length);
         await HideCurrentImage(currentRank);
+        index++;
         result = await GetNextPostWithImage(lemmyPosts);
 
         console.log("RESULT : " + result);
 
 
-        if (result == null) {
-            imageSrc = nextPageWarning;
-        }else {
+        if (result != null) {
           console.log("IMAGE SRC : " + result.imageSrc);
           imageSrc = result.imageSrc;
           rank = result.rank;
@@ -255,6 +253,7 @@ $(document).keydown(async function(keyPress) {
         console.log("S Key press");
         console.log("LEMMY POSTS LENGTH : " + lemmyPosts.length);
         await HideCurrentImage(currentRank);
+        index--;
         result = await GetPreviousPostWithImage(lemmyPosts);
         if(result != null){
           imageSrc = result.imageSrc;
@@ -265,6 +264,16 @@ $(document).keydown(async function(keyPress) {
         SendImageToDisplay(imageSrc, rank);
 
         return;
+    }else if (keyPress.keyCode == SPACE_BAR)
+    {
+      //Move on to next page
+      var nextPageUrl = await GetNextPageUrl();
+      GoToPage(nextPageUrl);
+    }else if(keyPress.keyCode == SHIFT)
+    {
+      //Move back to previous page
+      var previousPageUrl = await GetPreviousPageUrl();
+      GoToPage(previousPageUrl);
     }
 
     return;
@@ -329,7 +338,13 @@ async function ShowCurrentImage(rank)
 {
   if(rank == undefined)
   {
-    $(".imagePost").show();
+    result = await GetNextPostWithImage(lemmyPosts);
+    if (result != null) {
+      console.log("IMAGE SRC : " + result.imageSrc);
+      imageSrc = result.imageSrc;
+      rank = result.rank;
+    }
+    SendImageToDisplay(imageSrc, rank);
     return;
   }
 
