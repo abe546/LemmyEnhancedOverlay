@@ -2,6 +2,7 @@
 const POST = "post";
 const EXPANDO_SPACE = "expando ";
 const EXPANDO = "expando";
+const EXPANDO_OPEN = "expando open";
 const IMAGE = "image";
 const RANK = "rank";
 const NEXT = "next";
@@ -15,6 +16,9 @@ const W_KEY = 87;
 const SHIFT = 16;
 const SPACE_BAR = 32;
 
+//Cache Keys
+const ACTIVE = "active";
+
 const nextPageWarning = "https://i.imgur.com/rmF0e71.png";
 
 var index = 0;
@@ -25,6 +29,12 @@ var currentRank;
 window.addEventListener('load', async function () {
 
   console.log("page is fully loaded");
+
+  if(localStorage.getItem(ACTIVE) == "true")
+  {
+    disableKeys = false;
+  }
+
   await StartState();
   await SetDisplay();
 });
@@ -53,21 +63,8 @@ async function GetNextPostWithImage(posts) {
     console.log("POSTS LENGTH " + posts.length);
     var imageSrc;
     for (let i = indexAtStart; i < posts.length; i++) {
-        for (let j = 0; j < posts[i].childNodes.length; j++) {
-            if (posts[i].childNodes[j] != undefined &&
-                posts[i].childNodes[j].className == EXPANDO || posts[i].childNodes[j].className == EXPANDO_SPACE) {
-                for (let k = 0; k < posts[i].childNodes[j].childNodes.length; k++) {
 
-                    if (posts[i].childNodes[j].childNodes[k] != undefined &&
-                        posts[i].childNodes[j].childNodes[k].className == IMAGE &&
-                        posts[i].childNodes[j].childNodes[k].childNodes[1] != undefined) {
-                        var entry = posts[i].childNodes[j].childNodes[k].childNodes[1];
-                        index = i;
-                        imageSrc = entry.src;
-                    }
-                }
-            }
-        }
+        imageSrc = await FindImageSrcFromPost(posts[i]);
 
         if(imageSrc != undefined)
         {
@@ -79,7 +76,7 @@ async function GetNextPostWithImage(posts) {
               if(document.getElementById(`imagePost${rank}`) == undefined){
               posts[i].childNodes[j].insertAdjacentHTML( 'beforeend', await GetUniquePostIdElement(rank));
             }
-
+              index = i;
               return {
                 rank: rank,
                 imageSrc: imageSrc
@@ -94,9 +91,32 @@ async function GetNextPostWithImage(posts) {
 
     //No image found, reset index to post limit
 
-    index = posts.length - 1;
-
     return null;
+}
+
+async function FindImageSrcFromPost(post)
+{
+  var imageSrc;
+  for (let j = 0; j < post.childNodes.length; j++) {
+      var element = post.childNodes[j];
+      if (element != undefined &&
+          element.className == EXPANDO ||
+          element.className == EXPANDO_SPACE ||
+          element.className == EXPANDO_OPEN) {
+          for (let k = 0; k < element.childNodes.length; k++) {
+            var innerElement = element.childNodes[k];
+              if (innerElement != undefined &&
+                  innerElement.className == IMAGE &&
+                  innerElement.childNodes[1] != undefined) {
+                  var entry = innerElement.childNodes[1];
+                  imageSrc = entry.src;
+                  return imageSrc;
+              }
+          }
+      }
+  }
+
+  return imageSrc;
 }
 
 async function GetPreviousPostWithImage(posts) {
@@ -108,21 +128,8 @@ async function GetPreviousPostWithImage(posts) {
     console.log("POSTS LENGTH " + posts.length);
     var imageSrc;
     for (let i = indexAtStart; i >= 0; i--) {
-        for (let j = 0; j < posts[i].childNodes.length; j++) {
-            if (posts[i].childNodes[j] != undefined &&
-                posts[i].childNodes[j].className == EXPANDO || posts[i].childNodes[j].className == EXPANDO_SPACE) {
-                for (let k = 0; k < posts[i].childNodes[j].childNodes.length; k++) {
 
-                    if (posts[i].childNodes[j].childNodes[k] != undefined &&
-                        posts[i].childNodes[j].childNodes[k].className == IMAGE &&
-                        posts[i].childNodes[j].childNodes[k].childNodes[1] != undefined) {
-                        var entry = posts[i].childNodes[j].childNodes[k].childNodes[1];
-                        index = i;
-                        imageSrc = entry.src;
-                    }
-                }
-            }
-        }
+        imageSrc = await FindImageSrcFromPost(posts[i]);
 
         if(imageSrc != undefined)
         {
@@ -146,10 +153,6 @@ async function GetPreviousPostWithImage(posts) {
     }
 
     console.log("No image found at index " + index + ", returning nill");
-
-    //No image found, reset to 0 index
-
-    index = 0;
 
     return null;
 }
@@ -200,12 +203,35 @@ async function FlipKeyReading()
   console.log("DISABLE KEY VALUE : " + disableKeys);
 }
 
+async function IncreaseIndex()
+{
+  if(index < lemmyPosts.length)
+  {
+    index++;
+  }
+}
+
+async function DecreaseIndex()
+{
+  if(index > 0)
+  {
+    index--;
+  }
+}
+
 //#region input
 //Key down function listener :
 $(document).keydown(async function(keyPress) {
 
   if(keyPress.keyCode == ESCAPE_KEY)
   {
+    if(localStorage.getItem(ACTIVE) == undefined || localStorage.getItem(ACTIVE) == "true")
+    {
+    localStorage.setItem(ACTIVE, "false");
+  }else {
+    localStorage.setItem(ACTIVE, "true");
+  }
+
     console.log("ESCAPE KEY PRESS");
     if(disableKeys){
       await ShowCurrentImage(currentRank);
@@ -234,7 +260,7 @@ $(document).keydown(async function(keyPress) {
         console.log("W Key press");
         console.log("LEMMY POSTS LENGTH : " + lemmyPosts.length);
         await HideCurrentImage(currentRank);
-        index++;
+        await IncreaseIndex();
         result = await GetNextPostWithImage(lemmyPosts);
 
         console.log("RESULT : " + result);
@@ -244,6 +270,9 @@ $(document).keydown(async function(keyPress) {
           console.log("IMAGE SRC : " + result.imageSrc);
           imageSrc = result.imageSrc;
           rank = result.rank;
+        }else {
+          ShowCurrentImage(currentRank);
+          return;
         }
 
         SendImageToDisplay(imageSrc, rank);
@@ -253,12 +282,15 @@ $(document).keydown(async function(keyPress) {
         console.log("S Key press");
         console.log("LEMMY POSTS LENGTH : " + lemmyPosts.length);
         await HideCurrentImage(currentRank);
-        index--;
+        await DecreaseIndex();
         result = await GetPreviousPostWithImage(lemmyPosts);
         if(result != null){
           imageSrc = result.imageSrc;
           rank = result.rank;
           console.log("IMAGE SRC : " + result.imageSrc);
+        }else {
+          ShowCurrentImage(currentRank);
+          return;
         }
 
         SendImageToDisplay(imageSrc, rank);
