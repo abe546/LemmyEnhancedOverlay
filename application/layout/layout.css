@@ -44,7 +44,7 @@ div.imageView{
   max-width : auto;
 
   bottom : 8.5%;
-  position:   absolute;
+  position:   fixed;
 	background : black;
 	outline: none;
 	 z-index:    10;

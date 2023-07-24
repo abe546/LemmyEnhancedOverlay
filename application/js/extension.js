@@ -3,6 +3,9 @@ const POST = "post";
 const EXPANDO = "expando ";
 const IMAGE = "image";
 const RANK = "rank";
+const NEXT = "next";
+const PREV = "prev";
+const PROCESSED_POST = "processedPost";
 
 const ESCAPE_KEY = 27;
 const S_KEY = 83;
@@ -15,12 +18,13 @@ var lemmyPosts;
 var disableKeys = true;
 var currentRank;
 
-window.onload = (event) => {
-    console.log("page is fully loaded");
+window.addEventListener('load', async function () {
 
-    StartState();
-    SetDisplay();
-};
+  console.log("page is fully loaded");
+
+  await StartState();
+  await SetDisplay();
+});
 
 async function StartState() {
     lemmyPosts = await LoadPosts();
@@ -74,6 +78,8 @@ async function GetNextPostWithImage(posts) {
             {
               var rank = posts[i].childNodes[j].innerText;
               currentRank = rank;
+              posts[i].childNodes[j].insertAdjacentHTML( 'beforeend', await GetUniquePostIdElement(rank));
+
               return {
                 rank: rank,
                 imageSrc: imageSrc
@@ -129,6 +135,8 @@ async function GetPreviousPostWithImage(posts) {
             {
               var rank = posts[i].childNodes[j].innerText;
               currentRank = rank;
+              posts[i].childNodes[j].insertAdjacentHTML( 'beforeend', await GetUniquePostIdElement(rank));
+
               return {
                 rank: rank,
                 imageSrc: imageSrc
@@ -148,50 +156,38 @@ async function GetPreviousPostWithImage(posts) {
     return null;
 }
 
-function SetDisplay() {
-    var $input = $('<input type="button" value="Base" class="buttons" id="base" /input>');
-    $input.prependTo($("body"));
-
-    $("#base").after("<div id=\"imageView\" ></div>");
-}
-
-//Given the image url, send to display
-function SendImageToDisplay(imageSrc, rank) {
-    if (imageSrc == undefined) {
-        return;
-    }
-
-    if(rank == undefined)
-    {
-      rank = lemmyPosts.length-1;
-    }
-
-    console.log("IMAGE SRC : "+imageSrc);
-
-    const post = `<img src=\"${imageSrc}\" class=\"imagePost\" id=\"imagePost${rank}\">"`;
-    $("#imageView").after(post);
-}
-
-async function HideCurrentImage(rank) {
-
-    if(rank == undefined)
-    {
-      $(".imagePost").hide();
-      return;
-    }
-
-    $(`#imagePost${rank}`).hide();
-}
-
-async function ShowCurrentImage(rank)
+async function GetNextPageUrl()
 {
-  if(rank == undefined)
-  {
-    $(".imagePost").show();
-    return;
+  var pager = document.getElementsByClassName(PAGER);
+  var nextPageUrl;
+  for(let i = 0; i < pager[0].childNodes.length; i++){
+    var element = pager[0].childNodes[i];
+    if(element.innerText != undefined &&
+       element.innerText.includes(NEXT))
+       {
+         nextPageUrl = element.href;
+         break;
+       }
   }
 
-    $(`#imagePost${rank}`).show();
+  return nextPageUrl;
+}
+
+async function GetPreviousPageUrl()
+{
+  var pager = document.getElementsByClassName(PAGER);
+  var nextPageUrl;
+  for(let i = 0; i < pager[0].childNodes.length; i++){
+    var element = pager[0].childNodes[i];
+    if(element.innerText != undefined &&
+       element.innerText.includes(PREV))
+       {
+         nextPageUrl = element.href;
+         break;
+       }
+  }
+
+  return nextPageUrl;
 }
 
 async function FlipKeyReading()
@@ -201,6 +197,7 @@ async function FlipKeyReading()
   console.log("DISABLE KEY VALUE : " + disableKeys);
 }
 
+//#region input
 //Key down function listener :
 $(document).keydown(async function(keyPress) {
 
@@ -267,3 +264,69 @@ $(document).keydown(async function(keyPress) {
 
     return;
 });
+
+//#endregion
+
+//#region : display
+
+function SetDisplay() {
+    var $input = $('<div class="buttons" id="base"></div>');
+    $input.prependTo($("body"));
+
+    $("#base").after("<div id=\"imageView\" ></div>");
+}
+
+//Given the image url, send to display
+async function SendImageToDisplay(imageSrc, rank) {
+    if (imageSrc == undefined) {
+        return;
+    }
+
+    if(rank == undefined)
+    {
+      rank = lemmyPosts.length-1;
+      currentRank = rank;
+    }
+
+    console.log("IMAGE SRC SET DISPLAY : "+imageSrc);
+
+    const uniquePostId = await GetUniquePostId(rank);
+    
+    const post = `<img src=\"${imageSrc}\" class=\"imagePost\" id=\"imagePost${rank}\"></img>`;
+    $("#imageView").after(post);
+    window.location.hash = uniquePostId;
+}
+
+async function HideCurrentImage(rank) {
+
+    if(rank == undefined)
+    {
+      $(".imagePost").hide();
+      return;
+    }
+
+    $(`#imagePost${rank}`).hide();
+}
+
+async function ShowCurrentImage(rank)
+{
+  if(rank == undefined)
+  {
+    $(".imagePost").show();
+    return;
+  }
+
+    $(`#imagePost${rank}`).show();
+}
+
+async function GetUniquePostIdElement(rank)
+{
+  return `<div class="${PROCESSED_POST}" id="${PROCESSED_POST}${rank}" ></div>`;
+}
+
+async function GetUniquePostId(rank)
+{
+  return `#${PROCESSED_POST}${rank}`;
+}
+
+//#endregion
