@@ -14,3 +14,5 @@ W : Go to next image in page, will be displayed in an image overlay on page.
 S : Go to previous image in page, will be displayed in an image overlay on page.
 SpaceBar : Go to the next lemmy page, loads first image of this page automatically.
 Shift : Go to previous lemmy page, loads first image of this page automatically. 
+
+Pressing escape will disable the extension. If the extension was paused, pressing it again will load the last image that was displayed. 
