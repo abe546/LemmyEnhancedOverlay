@@ -1,6 +1,7 @@
 /* jshint esversion: 8 */
 const POST = "post";
-const EXPANDO = "expando ";
+const EXPANDO_SPACE = "expando ";
+const EXPANDO = "expando";
 const IMAGE = "image";
 const RANK = "rank";
 const NEXT = "next";
@@ -57,7 +58,7 @@ async function GetNextPostWithImage(posts) {
     for (let i = indexAtStart; i < posts.length; i++) {
         for (let j = 0; j < posts[i].childNodes.length; j++) {
             if (posts[i].childNodes[j] != undefined &&
-                posts[i].childNodes[j].className == EXPANDO) {
+                posts[i].childNodes[j].className == EXPANDO || posts[i].childNodes[j].className == EXPANDO_SPACE) {
                 for (let k = 0; k < posts[i].childNodes[j].childNodes.length; k++) {
 
                     if (posts[i].childNodes[j].childNodes[k] != undefined &&
@@ -78,7 +79,9 @@ async function GetNextPostWithImage(posts) {
             {
               var rank = posts[i].childNodes[j].innerText;
               currentRank = rank;
+              if(document.getElementById(`imagePost${rank}`) == undefined){
               posts[i].childNodes[j].insertAdjacentHTML( 'beforeend', await GetUniquePostIdElement(rank));
+            }
 
               return {
                 rank: rank,
@@ -114,7 +117,7 @@ async function GetPreviousPostWithImage(posts) {
     for (let i = indexAtStart; i >= 0; i--) {
         for (let j = 0; j < posts[i].childNodes.length; j++) {
             if (posts[i].childNodes[j] != undefined &&
-                posts[i].childNodes[j].className == EXPANDO) {
+                posts[i].childNodes[j].className == EXPANDO || posts[i].childNodes[j].className == EXPANDO_SPACE) {
                 for (let k = 0; k < posts[i].childNodes[j].childNodes.length; k++) {
 
                     if (posts[i].childNodes[j].childNodes[k] != undefined &&
@@ -135,8 +138,9 @@ async function GetPreviousPostWithImage(posts) {
             {
               var rank = posts[i].childNodes[j].innerText;
               currentRank = rank;
+              if(document.getElementById(`imagePost${rank}`) == undefined){
               posts[i].childNodes[j].insertAdjacentHTML( 'beforeend', await GetUniquePostIdElement(rank));
-
+            }
               return {
                 rank: rank,
                 imageSrc: imageSrc
@@ -210,8 +214,9 @@ $(document).keydown(async function(keyPress) {
       return;
     }
 
-    await HideCurrentImage();
+    await HideCurrentImage(currentRank);
     await FlipKeyReading();
+    history.replaceState({}, document.title, ".");
     return;
   }
 
@@ -291,8 +296,20 @@ async function SendImageToDisplay(imageSrc, rank) {
     console.log("IMAGE SRC SET DISPLAY : "+imageSrc);
 
     const uniquePostId = await GetUniquePostId(rank);
-    
-    const post = `<img src=\"${imageSrc}\" class=\"imagePost\" id=\"imagePost${rank}\"></img>`;
+    const uniqueImagePostId = `imagePost${rank}`;
+
+    //Check if element exists and is hidden, if so show it.
+    var element = document.getElementById(uniqueImagePostId);
+
+    if(element != null && element != undefined)
+    {
+      console.log("Element exists, show : " + uniqueImagePostId);
+      ShowCurrentImage(rank);
+      window.location.hash = uniquePostId;
+      return;
+    }
+
+    const post = `<img src=\"${imageSrc}\" class=\"imagePost\" id=\"${uniqueImagePostId}\"></img>`;
     $("#imageView").after(post);
     window.location.hash = uniquePostId;
 }
