@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Lemmy Enhanced Overlay (LEO)",
+  "version" : "1.0.0",
+  "description" : "Quickly show images from page, they're overlayed on current page and eliminate the need to open tabs or scrolling to open links.",
+
+  "content_scripts": [
+      {
+        "matches": [ "https://old.lemmy.world/*" ],
+        "js": ["js/jquery-3.2.1.min.js","js/extension.js"],
+        "comment" : "BE VERY CAREFUL WITH PLACEMENT OF EXTERNAL FILES. JQUERY MUST BE LOADED BEFORE ANY OTHER JS SO IT MUST BE IN FIRST INDEX",
+        "css" : ["layout/layout.css"]
+      }
+  ]
+}
