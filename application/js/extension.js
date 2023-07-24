@@ -29,14 +29,14 @@ var currentRank;
 window.addEventListener('load', async function () {
 
   console.log("page is fully loaded");
-
-  if(localStorage.getItem(ACTIVE) == "true")
-  {
-    disableKeys = false;
-  }
-
   await StartState();
   await SetDisplay();
+  
+  if(localStorage.getItem(ACTIVE) == "true")
+  {
+    await ShowCurrentImage(currentRank);
+    await FlipKeyReading();
+  }
 });
 
 async function StartState() {
