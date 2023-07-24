@@ -79,7 +79,7 @@ async function GetNextPostWithImage(posts) {
               var rank = posts[i].childNodes[j].innerText;
               currentRank = rank;
               if(document.getElementById(`imagePost${rank}`) == undefined){
-              titleElement.insertAdjacentHTML( 'beforeend', await GetUniquePostIdElement(rank));
+              titleElement.insertAdjacentHTML( 'beforebegin', await GetUniquePostIdElement(rank));
             }
               index = i;
               return {
@@ -171,7 +171,7 @@ async function GetPreviousPostWithImage(posts) {
               var rank = posts[i].childNodes[j].innerText;
               currentRank = rank;
               if(document.getElementById(`imagePost${rank}`) == undefined){
-              titleElement.insertAdjacentHTML( 'beforeend', await GetUniquePostIdElement(rank));
+              titleElement.insertAdjacentHTML( 'beforebegin', await GetUniquePostIdElement(rank));
             }
 
               return {
