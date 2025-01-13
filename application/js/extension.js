@@ -28,17 +28,16 @@ var lemmyPosts;
 var disableKeys = true;
 var currentRank;
 
-window.addEventListener('load', async function () {
+window.addEventListener('load', async function() {
 
-  console.log("page is fully loaded");
-  await StartState();
-  await SetDisplay();
+    console.log("page is fully loaded");
+    await StartState();
+    await SetDisplay();
 
-  if(localStorage.getItem(ACTIVE) == "true")
-  {
-    await ShowCurrentImage(currentRank);
-    await FlipKeyReading();
-  }
+    if (localStorage.getItem(ACTIVE) == "true") {
+        await ShowCurrentImage(currentRank);
+        await FlipKeyReading();
+    }
 });
 
 async function StartState() {
@@ -59,94 +58,129 @@ async function LoadPosts() {
 
 async function GetNextPostWithImage(posts) {
     console.log("GET NEXT POST, INDEX : " + index);
-     const indexAtStart = index;
+    const indexAtStart = index;
 
     console.log("START : " + indexAtStart);
     console.log("POSTS LENGTH " + posts.length);
     var imageSrc;
     for (let i = indexAtStart; i < posts.length; i++) {
 
-        imageSrc = await FindImageSrcFromPost(posts[i]);
+        imageSrc = await FindAttributeFromSrcPost(posts[i], IMAGE);
 
-        if(imageSrc != undefined)
-        {
+        if (imageSrc != undefined) {
 
-          var titleElement = await GetTitleFromPost(posts[i]);
+            var titleElement = await FindAttributeFromSrcPost(posts[i], TITLE);
 
-          for(let j = 0; j < posts[i].childNodes.length; j++){
-            if(posts[i].childNodes[j].className == RANK)
-            {
-              var rank = posts[i].childNodes[j].innerText;
-              currentRank = rank;
-              if(document.getElementById(`imagePost${rank}`) == undefined){
-              titleElement.insertAdjacentHTML( 'beforebegin', await GetUniquePostIdElement(rank));
+            if (titleElement == null || titleElement == undefined) {
+                console.log("No title found at index " + index + ", returning nill");
             }
-              index = i;
-              return {
-                rank: rank,
-                imageSrc: imageSrc,
-                title: titleElement.innerText
-              };
+
+            if (imageSrc != undefined && titleElement != undefined) {
+                for (let j = 0; j < posts[i].childNodes.length; j++) {
+                    if (posts[i].childNodes[j].className == RANK) {
+                        var rank = posts[i].childNodes[j].innerText;
+                        currentRank = rank;
+                        if (document.getElementById(`imagePost${rank}`) == undefined) {
+                            titleElement.insertAdjacentHTML('beforebegin', await GetUniquePostIdElement(rank));
+                        }
+
+                        return {
+                            rank: rank,
+                            imageSrc: imageSrc,
+                            title: titleElement.innerText
+                        };
+                    }
+                }
             }
-          }
         }
 
     }
 
-    console.log("No image found at index " + index + ", returning nill");
+    if (imageSrc == null || imageSrc == undefined) {
+        console.log("No image found at index " + index + ", returning nill");
+    }
 
     //No image found, reset index to post limit
 
     return null;
 }
 
-async function GetTitleFromPost(post)
-{
-  var titleElement;
+async function FindAttributeFromSrcPost(post, attribute) {
+    var imageSrc;
+    for (let j = 0; j < post.childNodes.length; j++) {
+        var element = post.childNodes[j];
+        if (element != undefined &&
+            element.className != undefined &&
+            element.className != null) {
+            var result = await GetAttributeFromChildren(element, attribute);
+            if (result != null && result != undefined) {
+                return result;
+            }
+        }
+    }
 
-  for (let j = 0; j < post.childNodes.length; j++) {
-      var element = post.childNodes[j];
-      if (element != undefined &&
-          element.className == ENTRY) {
-          for (let k = 0; k < element.childNodes.length; k++) {
-            var innerElement = element.childNodes[k];
-              if (innerElement != undefined &&
-                  innerElement.className == TITLE &&
-                  innerElement.childNodes[1] != undefined) {
-                  var entry = innerElement.childNodes[1];
-                  titleElement = entry;
-                  return titleElement;
-              }
-          }
-      }
-  }
-
-  return titleElement;
+    return null;
 }
 
-async function FindImageSrcFromPost(post)
-{
-  var imageSrc;
-  for (let j = 0; j < post.childNodes.length; j++) {
-      var element = post.childNodes[j];
-      if (element != undefined &&
-          element.className == EXPANDO ||
-          element.className == EXPANDO_SPACE ||
-          element.className == EXPANDO_OPEN) {
-          for (let k = 0; k < element.childNodes.length; k++) {
-            var innerElement = element.childNodes[k];
-              if (innerElement != undefined &&
-                  innerElement.className == IMAGE &&
-                  innerElement.childNodes[1] != undefined) {
-                  var entry = innerElement.childNodes[1];
-                  imageSrc = entry.src;
-                  return imageSrc;
-              }
-          }
-      }
-  }
+async function GetAttributeFromChildren(element, attribute) {
+    if (element == null || element == undefined) {
+        return null;
+    }
 
-  return imageSrc;
+    console.log("Recursive call for : " + element.className);
+
+    if (attribute == IMAGE && attribute == element.className) {
+        return await GetImageFromNode(element);
+    } else if (attribute == RANK && attribute == element.className) {
+        return await GetRankFromNode(element);
+    } else if (attribute == TITLE && attribute == element.className) {
+        return await GetTitleFromNode(element);
+    }
+
+    for (let k = 0; k < element.childNodes.length; k++) {
+        var innerElement = element.childNodes[k];
+        console.log("INNER ELEMENT CLASS : " + innerElement.className);
+
+        if (innerElement != null && innerElement != undefined && innerElement.hasChildNodes) {
+            var value = await GetAttributeFromChildren(innerElement, attribute);
+
+            if (value != null || value != undefined) {
+                return value;
+            }
+        }
+    }
+
+    return null;
+}
+
+async function GetImageFromNode(node) {
+    if (node != undefined &&
+        node.src != undefined) {
+        var imageSrc = node.src;
+        console.log("IMAGE SRC: " + imageSrc)
+        return imageSrc;
+    }
+
+    return null;
+}
+
+async function GetTitleFromNode(node) {
+
+    if (node != undefined &&
+        node.childNodes[1] != undefined) {
+        var entry = node.childNodes[1];
+        titleElement = entry;
+        return titleElement;
+    }
+
+    return null;
+}
+
+async function GetRankFromNode(node) {
+    if (node != undefined &&
+        node.textContenxt != undefined) {
+        return node.textContent;
+    }
 }
 
 async function GetPreviousPostWithImage(posts) {
@@ -159,130 +193,121 @@ async function GetPreviousPostWithImage(posts) {
     var imageSrc;
     for (let i = indexAtStart; i >= 0; i--) {
 
-        imageSrc = await FindImageSrcFromPost(posts[i]);
+        imageSrc = await FindAttributeFromSrcPost(posts[i], IMAGE);
 
-        var titleElement = await GetTitleFromPost(posts[i]);
+        var titleElement = await FindAttributeFromSrcPost(posts[i], TITLE);
 
-        if(imageSrc != undefined)
-        {
-          for(let j = 0; j < posts[i].childNodes.length; j++){
-            if(posts[i].childNodes[j].className == RANK)
-            {
-              var rank = posts[i].childNodes[j].innerText;
-              currentRank = rank;
-              if(document.getElementById(`imagePost${rank}`) == undefined){
-              titleElement.insertAdjacentHTML( 'beforebegin', await GetUniquePostIdElement(rank));
+        if (titleElement == null || titleElement == undefined) {
+            console.log("No title found at index " + index + ", returning nill");
+        }
+
+        if (imageSrc != undefined && titleElement != undefined) {
+            for (let j = 0; j < posts[i].childNodes.length; j++) {
+                if (posts[i].childNodes[j].className == RANK) {
+                    var rank = posts[i].childNodes[j].innerText;
+                    currentRank = rank;
+                    if (document.getElementById(`imagePost${rank}`) == undefined) {
+                        titleElement.insertAdjacentHTML('beforebegin', await GetUniquePostIdElement(rank));
+                    }
+
+                    return {
+                        rank: rank,
+                        imageSrc: imageSrc,
+                        title: titleElement.innerText
+                    };
+                }
             }
-
-              return {
-                rank: rank,
-                imageSrc: imageSrc,
-                title: titleElement.innerText
-              };
-            }
-          }
         }
 
     }
 
-    console.log("No image found at index " + index + ", returning nill");
+    if (imageSrc == null || imageSrc == undefined) {
+        console.log("No image found at index " + index + ", returning nill");
+    }
 
     return null;
 }
 
-async function GetNextPageUrl()
-{
-  var pager = document.getElementsByClassName(PAGER);
-  var nextPageUrl;
-  for(let i = 0; i < pager[0].childNodes.length; i++){
-    var element = pager[0].childNodes[i];
-    if(element.innerText != undefined &&
-       element.innerText.includes(NEXT))
-       {
-         nextPageUrl = element.href;
-         break;
-       }
-  }
+async function GetNextPageUrl() {
+    var pager = document.getElementsByClassName(PAGER);
+    var nextPageUrl;
+    for (let i = 0; i < pager[0].childNodes.length; i++) {
+        var element = pager[0].childNodes[i];
+        if (element.innerText != undefined &&
+            element.innerText.includes(NEXT)) {
+            nextPageUrl = element.href;
+            break;
+        }
+    }
 
-  return nextPageUrl;
+    return nextPageUrl;
 }
 
-async function GetPreviousPageUrl()
-{
-  var pager = document.getElementsByClassName(PAGER);
-  var nextPageUrl;
-  for(let i = 0; i < pager[0].childNodes.length; i++){
-    var element = pager[0].childNodes[i];
-    if(element.innerText != undefined &&
-       element.innerText.includes(PREV))
-       {
-         nextPageUrl = element.href;
-         break;
-       }
-  }
+async function GetPreviousPageUrl() {
+    var pager = document.getElementsByClassName(PAGER);
+    var nextPageUrl;
+    for (let i = 0; i < pager[0].childNodes.length; i++) {
+        var element = pager[0].childNodes[i];
+        if (element.innerText != undefined &&
+            element.innerText.includes(PREV)) {
+            nextPageUrl = element.href;
+            break;
+        }
+    }
 
-  return nextPageUrl;
+    return nextPageUrl;
 }
 
-function GoToPage(page)
-{
-  window.location.href = page;
+function GoToPage(page) {
+    window.location.href = page;
 }
 
-async function FlipKeyReading()
-{
-  disableKeys = !disableKeys;
+async function FlipKeyReading() {
+    disableKeys = !disableKeys;
 
-  console.log("DISABLE KEY VALUE : " + disableKeys);
+    console.log("DISABLE KEY VALUE : " + disableKeys);
 }
 
-async function IncreaseIndex()
-{
-  if(index < lemmyPosts.length)
-  {
-    index++;
-  }
+async function IncreaseIndex() {
+    if (index < lemmyPosts.length) {
+        index++;
+    }
 }
 
-async function DecreaseIndex()
-{
-  if(index > 0)
-  {
-    index--;
-  }
+async function DecreaseIndex() {
+    if (index > 0) {
+        index--;
+    }
 }
 
 //#region input
 //Key down function listener :
 $(document).keydown(async function(keyPress) {
 
-  if(keyPress.keyCode == ESCAPE_KEY)
-  {
-    if(localStorage.getItem(ACTIVE) == undefined || localStorage.getItem(ACTIVE) == "true")
-    {
-    localStorage.setItem(ACTIVE, "false");
-  }else {
-    localStorage.setItem(ACTIVE, "true");
-  }
+    if (keyPress.keyCode == ESCAPE_KEY) {
+        if (localStorage.getItem(ACTIVE) == undefined || localStorage.getItem(ACTIVE) == "true") {
+            localStorage.setItem(ACTIVE, "false");
+        } else {
+            localStorage.setItem(ACTIVE, "true");
+        }
 
-    console.log("ESCAPE KEY PRESS");
-    if(disableKeys){
-      await ShowCurrentImage(currentRank);
-      await FlipKeyReading();
-      return;
+        console.log("ESCAPE KEY PRESS");
+        if (disableKeys) {
+            await ShowCurrentImage(currentRank);
+            await FlipKeyReading();
+            return;
+        }
+
+        await HideCurrentImage(currentRank);
+        await FlipKeyReading();
+        history.replaceState({}, document.title, window.location.href.split('#')[0]);
+        return;
     }
 
-    await HideCurrentImage(currentRank);
-    await FlipKeyReading();
-    history.replaceState({}, document.title, window.location.href.split('#')[0]);
-    return;
-  }
-
-    if(disableKeys)
-    {
-      console.log("KEY READING DISABLED " + disableKeys);
-      //Key reading disabled
-      return;
+    if (disableKeys) {
+        console.log("KEY READING DISABLED " + disableKeys);
+        //Key reading disabled
+        return;
     }
 
     console.log("Key press" + keyPress.keyCode);
@@ -301,13 +326,13 @@ $(document).keydown(async function(keyPress) {
 
 
         if (result != null) {
-          console.log("IMAGE SRC : " + result.imageSrc);
-          imageSrc = result.imageSrc;
-          rank = result.rank;
-          title = result.title;
-        }else {
-          ShowCurrentImage(currentRank);
-          return;
+            console.log("IMAGE SRC : " + result.imageSrc);
+            imageSrc = result.imageSrc;
+            rank = result.rank;
+            title = result.title;
+        } else {
+            ShowCurrentImage(currentRank);
+            return;
         }
 
         SendImageToDisplay(imageSrc, rank, title);
@@ -319,29 +344,27 @@ $(document).keydown(async function(keyPress) {
         await HideCurrentImage(currentRank);
         await DecreaseIndex();
         result = await GetPreviousPostWithImage(lemmyPosts);
-        if(result != null){
-          imageSrc = result.imageSrc;
-          rank = result.rank;
-          title = result.title;
-          console.log("IMAGE SRC : " + result.imageSrc);
-        }else {
-          ShowCurrentImage(currentRank);
-          return;
+        if (result != null) {
+            imageSrc = result.imageSrc;
+            rank = result.rank;
+            title = result.title;
+            console.log("IMAGE SRC : " + result.imageSrc);
+        } else {
+            ShowCurrentImage(currentRank);
+            return;
         }
 
         SendImageToDisplay(imageSrc, rank, title);
 
         return;
-    }else if (keyPress.keyCode == SPACE_BAR)
-    {
-      //Move on to next page
-      var nextPageUrl = await GetNextPageUrl();
-      GoToPage(nextPageUrl);
-    }else if(keyPress.keyCode == SHIFT)
-    {
-      //Move back to previous page
-      var previousPageUrl = await GetPreviousPageUrl();
-      GoToPage(previousPageUrl);
+    } else if (keyPress.keyCode == SPACE_BAR) {
+        //Move on to next page
+        var nextPageUrl = await GetNextPageUrl();
+        GoToPage(nextPageUrl);
+    } else if (keyPress.keyCode == SHIFT) {
+        //Move back to previous page
+        var previousPageUrl = await GetPreviousPageUrl();
+        GoToPage(previousPageUrl);
     }
 
     return;
@@ -364,18 +387,16 @@ async function SendImageToDisplay(imageSrc, rank, title) {
         return;
     }
 
-    if(rank == undefined)
-    {
-      rank = lemmyPosts.length-1;
-      currentRank = rank;
+    if (rank == undefined) {
+        rank = lemmyPosts.length - 1;
+        currentRank = rank;
     }
 
-    if(title == undefined)
-    {
-      title = "";
+    if (title == undefined) {
+        title = "";
     }
 
-    console.log("IMAGE SRC SET DISPLAY : "+imageSrc);
+    console.log("IMAGE SRC SET DISPLAY : " + imageSrc);
 
     const uniquePostId = await GetUniquePostId(rank);
     const uniqueImagePostId = `imagePost${rank}`;
@@ -383,12 +404,11 @@ async function SendImageToDisplay(imageSrc, rank, title) {
     //Check if element exists and is hidden, if so show it.
     var element = document.getElementById(uniqueImagePostId);
 
-    if(element != null && element != undefined)
-    {
-      console.log("Element exists, show : " + uniqueImagePostId);
-      ShowCurrentImage(rank);
-      window.location.hash = uniquePostId;
-      return;
+    if (element != null && element != undefined) {
+        console.log("Element exists, show : " + uniqueImagePostId);
+        ShowCurrentImage(rank);
+        window.location.hash = uniquePostId;
+        return;
     }
 
     const post = `<img src=\"${imageSrc}\" class=\"imagePost\" id=\"${uniqueImagePostId}\"></img>`;
@@ -402,10 +422,9 @@ async function SendImageToDisplay(imageSrc, rank, title) {
 
 async function HideCurrentImage(rank) {
 
-    if(rank == undefined)
-    {
-      $(".imagePost").hide();
-      return;
+    if (rank == undefined) {
+        $(".imagePost").hide();
+        return;
     }
 
     const uniqueImagePostId = `imagePost${rank}`;
@@ -414,37 +433,33 @@ async function HideCurrentImage(rank) {
     $(`#titleOf${uniqueImagePostId}`).hide();
 }
 
-async function ShowCurrentImage(rank)
-{
-  var imageSrc;
-  var title;
-  if(rank == undefined)
-  {
-    result = await GetNextPostWithImage(lemmyPosts);
-    if (result != null) {
-      console.log("IMAGE SRC : " + result.imageSrc);
-      imageSrc = result.imageSrc;
-      rank = result.rank;
-      title = result.title;
+async function ShowCurrentImage(rank) {
+    var imageSrc;
+    var title;
+    if (rank == undefined) {
+        result = await GetNextPostWithImage(lemmyPosts);
+        if (result != null) {
+            console.log("IMAGE SRC : " + result.imageSrc);
+            imageSrc = result.imageSrc;
+            rank = result.rank;
+            title = result.title;
+        }
+        SendImageToDisplay(imageSrc, rank, title);
+        return;
     }
-    SendImageToDisplay(imageSrc, rank, title);
-    return;
-  }
 
-  const uniqueImagePostId = `imagePost${rank}`;
+    const uniqueImagePostId = `imagePost${rank}`;
 
-  $(`#${uniqueImagePostId}`).show();
-  $(`#titleOf${uniqueImagePostId}`).show();
+    $(`#${uniqueImagePostId}`).show();
+    $(`#titleOf${uniqueImagePostId}`).show();
 }
 
-async function GetUniquePostIdElement(rank)
-{
-  return `<div class="${PROCESSED_POST}" id="${PROCESSED_POST}${rank}" ></div>`;
+async function GetUniquePostIdElement(rank) {
+    return `<div class="${PROCESSED_POST}" id="${PROCESSED_POST}${rank}" ></div>`;
 }
 
-async function GetUniquePostId(rank)
-{
-  return `#${PROCESSED_POST}${rank}`;
+async function GetUniquePostId(rank) {
+    return `#${PROCESSED_POST}${rank}`;
 }
 
 //#endregion

@@ -3,7 +3,7 @@ div.imageView{
 
   width:      auto;
 
-  background : black;
+  background : none;
   z-index:    10;
   top:        0;
   left:       0;
