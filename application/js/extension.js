@@ -11,7 +11,7 @@ const PAGER = "pager";
 const ENTRY = "entry";
 const TITLE = "title";
 const PROCESSED_POST = "processedPost";
-
+const ACTIVITY = "activity";
 const ESCAPE_KEY = 27;
 const S_KEY = 83;
 const W_KEY = 87;
@@ -23,14 +23,14 @@ const ACTIVE = "active";
 
 const nextPageWarning = "https://i.imgur.com/rmF0e71.png";
 
-var index = 0;
+var index = -1;
 var lemmyPosts;
 var disableKeys = true;
 var currentRank;
 
 window.addEventListener('load', async function() {
 
-    console.log("page is fully loaded");
+    //console.log("page is fully loaded");
     await StartState();
     await SetDisplay();
 
@@ -43,13 +43,23 @@ window.addEventListener('load', async function() {
 async function StartState() {
     lemmyPosts = await LoadPosts();
 
-    console.log("LEMMY INIT POSTS : " + lemmyPosts.length);
+    //console.log("LEMMY INIT POSTS : " + lemmyPosts.length);
 }
 
 async function LoadPosts() {
-    var posts = document.getElementsByClassName(POST);
+    var activities = document.getElementsByClassName(ACTIVITY);
+    var posts = null;
+    if (activities != undefined && activities != null && activities.length > 0) {
+        posts = [activities[0].getElementsByClassName(POST)[0]];
 
-    console.log("LOAD IMAGE POSTS LENGTH : " + posts.length);
+        for (let i = 1; i < activities.length; i++) {
+            posts.push(activities[i].getElementsByClassName(POST)[0]);
+        }
+    } else {
+        posts = document.getElementsByClassName(POST);
+    }
+
+    //console.log("LOAD IMAGE POSTS LENGTH : " + posts.length);
 
     index = 0;
 
@@ -57,11 +67,11 @@ async function LoadPosts() {
 }
 
 async function GetNextPostWithImage(posts) {
-    console.log("GET NEXT POST, INDEX : " + index);
+    //console.log("GET NEXT POST, INDEX : " + index);
     const indexAtStart = index;
 
-    console.log("START : " + indexAtStart);
-    console.log("POSTS LENGTH " + posts.length);
+    //console.log("START : " + indexAtStart);
+    //console.log("POSTS LENGTH " + posts.length);
     var imageSrc;
     for (let i = indexAtStart; i < posts.length; i++) {
 
@@ -72,25 +82,24 @@ async function GetNextPostWithImage(posts) {
             var titleElement = await FindAttributeFromSrcPost(posts[i], TITLE);
 
             if (titleElement == null || titleElement == undefined) {
-                console.log("No title found at index " + index + ", returning nill");
+                //console.log("No title found at index " + index + ", returning nill");
             }
 
             if (imageSrc != undefined && titleElement != undefined) {
-                for (let j = 0; j < posts[i].childNodes.length; j++) {
-                    if (posts[i].childNodes[j].className == RANK) {
-                        var rank = posts[i].childNodes[j].innerText;
-                        currentRank = rank;
-                        if (document.getElementById(`imagePost${rank}`) == undefined) {
-                            titleElement.insertAdjacentHTML('beforebegin', await GetUniquePostIdElement(rank));
-                        }
 
-                        return {
-                            rank: rank,
-                            imageSrc: imageSrc,
-                            title: titleElement.innerText
-                        };
-                    }
+                var rank = await FindAttributeFromSrcPost(posts[i], RANK);
+                currentRank = rank;
+                if (document.getElementById(`imagePost${rank}`) == undefined) {
+                    titleElement.insertAdjacentHTML('beforebegin', await GetUniquePostIdElement(rank));
                 }
+                //INDEX REFERENCED ACROSS METHODS
+                index = i;
+                return {
+                    rank: rank,
+                    imageSrc: imageSrc,
+                    title: titleElement.innerText
+                };
+
             }
         }
 
@@ -127,7 +136,7 @@ async function GetAttributeFromChildren(element, attribute) {
         return null;
     }
 
-    console.log("Recursive call for : " + element.className);
+    //console.log("Recursive call for : " + element.className);
 
     if (attribute == IMAGE && attribute == element.className) {
         return await GetImageFromNode(element);
@@ -139,7 +148,7 @@ async function GetAttributeFromChildren(element, attribute) {
 
     for (let k = 0; k < element.childNodes.length; k++) {
         var innerElement = element.childNodes[k];
-        console.log("INNER ELEMENT CLASS : " + innerElement.className);
+        //console.log("INNER ELEMENT CLASS : " + innerElement.className);
 
         if (innerElement != null && innerElement != undefined && innerElement.hasChildNodes) {
             var value = await GetAttributeFromChildren(innerElement, attribute);
@@ -157,7 +166,6 @@ async function GetImageFromNode(node) {
     if (node != undefined &&
         node.src != undefined) {
         var imageSrc = node.src;
-        console.log("IMAGE SRC: " + imageSrc)
         return imageSrc;
     }
 
@@ -178,18 +186,18 @@ async function GetTitleFromNode(node) {
 
 async function GetRankFromNode(node) {
     if (node != undefined &&
-        node.textContenxt != undefined) {
-        return node.textContent;
+        node.innerText != undefined) {
+        return node.innerText;
     }
 }
 
 async function GetPreviousPostWithImage(posts) {
-    console.log("GET PREVIOUS POST, INDEX : " + index);
+    //console.log("GET PREVIOUS POST, INDEX : " + index);
 
     const indexAtStart = index;
 
-    console.log("START : " + indexAtStart);
-    console.log("POSTS LENGTH " + posts.length);
+    //console.log("START : " + indexAtStart);
+    //console.log("POSTS LENGTH " + posts.length);
     var imageSrc;
     for (let i = indexAtStart; i >= 0; i--) {
 
@@ -202,22 +210,21 @@ async function GetPreviousPostWithImage(posts) {
         }
 
         if (imageSrc != undefined && titleElement != undefined) {
-            for (let j = 0; j < posts[i].childNodes.length; j++) {
-                if (posts[i].childNodes[j].className == RANK) {
-                    var rank = posts[i].childNodes[j].innerText;
-                    currentRank = rank;
-                    if (document.getElementById(`imagePost${rank}`) == undefined) {
-                        titleElement.insertAdjacentHTML('beforebegin', await GetUniquePostIdElement(rank));
-                    }
 
-                    return {
-                        rank: rank,
-                        imageSrc: imageSrc,
-                        title: titleElement.innerText
-                    };
-                }
+            var rank = await FindAttributeFromSrcPost(posts[i], RANK);
+            currentRank = rank;
+            if (document.getElementById(`imagePost${rank}`) == undefined) {
+                titleElement.insertAdjacentHTML('beforebegin', await GetUniquePostIdElement(rank));
             }
+            //INDEX REFERENCED ACROSS METHODS
+            index = i;
+            return {
+                rank: rank,
+                imageSrc: imageSrc,
+                title: titleElement.innerText
+            };
         }
+
 
     }
 
@@ -310,28 +317,33 @@ $(document).keydown(async function(keyPress) {
         return;
     }
 
-    console.log("Key press" + keyPress.keyCode);
+    //console.log("Key press" + keyPress.keyCode);
     var imageSrc;
     var rank;
     var title;
     if (keyPress.keyCode == W_KEY) {
 
-        console.log("W Key press");
-        console.log("LEMMY POSTS LENGTH : " + lemmyPosts.length);
-        await HideCurrentImage(currentRank);
-        await IncreaseIndex();
+        //console.log("W Key press");
+        //console.log("LEMMY POSTS LENGTH : " + lemmyPosts.length);
+        if (index != -1) {
+            await HideCurrentImage(currentRank);
+            await IncreaseIndex();
+        } else {
+            index = 0;
+        }
         result = await GetNextPostWithImage(lemmyPosts);
-
-        console.log("RESULT : " + result);
+        //console.log("RESULT : " + result);
 
 
         if (result != null) {
-            console.log("IMAGE SRC : " + result.imageSrc);
+            //console.log("IMAGE SRC : " + result.imageSrc);
             imageSrc = result.imageSrc;
             rank = result.rank;
             title = result.title;
         } else {
+            console.log("Null, show current");
             ShowCurrentImage(currentRank);
+            alert("No more images on page. Press space bar for next page.");
             return;
         }
 
@@ -339,18 +351,24 @@ $(document).keydown(async function(keyPress) {
 
         return;
     } else if (keyPress.keyCode == S_KEY) {
-        console.log("S Key press");
-        console.log("LEMMY POSTS LENGTH : " + lemmyPosts.length);
-        await HideCurrentImage(currentRank);
-        await DecreaseIndex();
+        //console.log("S Key press");
+        //console.log("LEMMY POSTS LENGTH : " + lemmyPosts.length);
+        if (index != -1) {
+            await HideCurrentImage(currentRank);
+            await DecreaseIndex();
+        } else {
+            index = 0;
+        }
         result = await GetPreviousPostWithImage(lemmyPosts);
         if (result != null) {
             imageSrc = result.imageSrc;
             rank = result.rank;
             title = result.title;
-            console.log("IMAGE SRC : " + result.imageSrc);
+            //console.log("IMAGE SRC : " + result.imageSrc);
         } else {
+            //console.log("Null, show current");
             ShowCurrentImage(currentRank);
+            alert("No more previous images. Press shift for previous page.");
             return;
         }
 
@@ -360,10 +378,12 @@ $(document).keydown(async function(keyPress) {
     } else if (keyPress.keyCode == SPACE_BAR) {
         //Move on to next page
         var nextPageUrl = await GetNextPageUrl();
+        index = -1;
         GoToPage(nextPageUrl);
     } else if (keyPress.keyCode == SHIFT) {
         //Move back to previous page
         var previousPageUrl = await GetPreviousPageUrl();
+        index = -1;
         GoToPage(previousPageUrl);
     }
 
@@ -396,7 +416,7 @@ async function SendImageToDisplay(imageSrc, rank, title) {
         title = "";
     }
 
-    console.log("IMAGE SRC SET DISPLAY : " + imageSrc);
+    //console.log("IMAGE SRC SET DISPLAY : " + imageSrc);
 
     const uniquePostId = await GetUniquePostId(rank);
     const uniqueImagePostId = `imagePost${rank}`;
@@ -404,8 +424,10 @@ async function SendImageToDisplay(imageSrc, rank, title) {
     //Check if element exists and is hidden, if so show it.
     var element = document.getElementById(uniqueImagePostId);
 
+    //console.log("UniquePID: " + uniquePostId);
+
     if (element != null && element != undefined) {
-        console.log("Element exists, show : " + uniqueImagePostId);
+        //console.log("Element exists, show : " + uniqueImagePostId);
         ShowCurrentImage(rank);
         window.location.hash = uniquePostId;
         return;
@@ -436,17 +458,6 @@ async function HideCurrentImage(rank) {
 async function ShowCurrentImage(rank) {
     var imageSrc;
     var title;
-    if (rank == undefined) {
-        result = await GetNextPostWithImage(lemmyPosts);
-        if (result != null) {
-            console.log("IMAGE SRC : " + result.imageSrc);
-            imageSrc = result.imageSrc;
-            rank = result.rank;
-            title = result.title;
-        }
-        SendImageToDisplay(imageSrc, rank, title);
-        return;
-    }
 
     const uniqueImagePostId = `imagePost${rank}`;
 
